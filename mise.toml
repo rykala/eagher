@@ -1,0 +1,7 @@
+[tools]
+go = "1.27.1"
+
+[tasks.install]
+description = "Build and install eagher into ~/.local/bin"
+run = "go install ."
+env = { GOBIN = "{{env.HOME}}/.local/bin" }
