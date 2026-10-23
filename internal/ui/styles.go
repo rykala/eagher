@@ -8,6 +8,7 @@ var (
 	fg     = lipgloss.Color("#f8f8f2")
 	green  = lipgloss.Color("#50fa7b")
 	red    = lipgloss.Color("#ff5555")
+	yellow = lipgloss.Color("#f1fa8c")
 
 	brandStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#282a36")).Background(accent).Padding(0, 1)
 	activeTabStyle   = lipgloss.NewStyle().Bold(true).Foreground(accent).Underline(true).Padding(0, 1)
@@ -15,6 +16,7 @@ var (
 	cursorStyle      = lipgloss.NewStyle().Foreground(accent)
 	rowStyle         = lipgloss.NewStyle().Foreground(fg)
 	selectedRowStyle = lipgloss.NewStyle().Foreground(accent).Bold(true)
+	pinStyle         = lipgloss.NewStyle().Foreground(yellow)
 	numberStyle      = lipgloss.NewStyle().Foreground(green)
 	authorStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#8be9fd"))
 	mutedStyle       = lipgloss.NewStyle().Foreground(muted)

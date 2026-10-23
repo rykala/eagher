@@ -20,7 +20,10 @@ const (
 	ageWidth    = 4
 )
 
-type item struct{ github.Item }
+type item struct {
+	github.Item
+	pinned bool
+}
 
 func (i item) FilterValue() string {
 	return fmt.Sprintf("#%d %s @%s", i.Number, i.Title, i.Author)
@@ -40,8 +43,12 @@ func (rowDelegate) Render(w io.Writer, m list.Model, index int, li list.Item) {
 	if selected {
 		cursor = cursorStyle.Render("▌ ")
 	}
+	pin := "  "
+	if it.pinned {
+		pin = pinStyle.Render("★ ")
+	}
 
-	titleWidth := max(m.Width()-lipgloss.Width(cursor)-numberWidth-authorWidth-ageWidth-2, 0)
+	titleWidth := max(m.Width()-lipgloss.Width(cursor)-lipgloss.Width(pin)-numberWidth-authorWidth-ageWidth-2, 0)
 	title := ansi.Truncate(it.Title, titleWidth, "…")
 	title += strings.Repeat(" ", titleWidth-lipgloss.Width(title))
 
@@ -53,7 +60,7 @@ func (rowDelegate) Render(w io.Writer, m list.Model, index int, li list.Item) {
 		titleStyle = mutedStyle
 	}
 
-	fmt.Fprint(w, cursor+
+	fmt.Fprint(w, cursor+pin+
 		numberStyle.Render(fmt.Sprintf("%-*s", numberWidth, fmt.Sprintf("#%d", it.Number)))+
 		titleStyle.Render(title)+" "+
 		authorStyle.Render(fmt.Sprintf("%-*s", authorWidth, ansi.Truncate("@"+it.Author, authorWidth, "…")))+" "+

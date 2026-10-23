@@ -8,6 +8,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 
 	"github.com/rykala/eagher/internal/github"
+	"github.com/rykala/eagher/internal/pins"
 	"github.com/rykala/eagher/internal/ui"
 )
 
@@ -27,6 +28,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	_, err = tea.NewProgram(ui.New(client)).Run()
+	store, err := pins.Open(client.Repo())
+	if err != nil {
+		return err
+	}
+	_, err = tea.NewProgram(ui.New(client, store)).Run()
 	return err
 }

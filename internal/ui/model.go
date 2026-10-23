@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/list"
@@ -11,6 +12,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/markdown"
 
 	"github.com/rykala/eagher/internal/github"
+	"github.com/rykala/eagher/internal/pins"
 )
 
 type view int
@@ -38,6 +40,7 @@ type loadedMsg struct {
 
 type Model struct {
 	repo        string
+	pins        *pins.Store
 	tabs        [2]*tab
 	active      view
 	showPreview bool
@@ -46,9 +49,10 @@ type Model struct {
 	rendered    map[string]string
 }
 
-func New(client *github.Client) *Model {
+func New(client *github.Client, store *pins.Store) *Model {
 	return &Model{
 		repo: client.Repo(),
+		pins: store,
 		tabs: [2]*tab{
 			newTab("Issues", "issue", "issues", client.Issues),
 			newTab("PRs", "pull request", "pull requests", client.PullRequests),
@@ -97,8 +101,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.loaded, t.err = true, msg.err
 		items := make([]list.Item, len(msg.items))
 		for i, it := range msg.items {
-			items[i] = item{it}
+			items[i] = item{Item: it, pinned: m.pins.Has(it.Number)}
 		}
+		slices.SortStableFunc(items, byPinnedThenUpdated)
 		return m, t.list.SetItems(items)
 
 	case tea.KeyPressMsg:
@@ -116,6 +121,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showPreview = !m.showPreview
 				m.resize()
 				return m, nil
+			case "f":
+				return m, m.togglePin()
 			}
 		}
 	}
@@ -123,6 +130,43 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.current().list, cmd = m.current().list.Update(msg)
 	return m, cmd
+}
+
+func (m *Model) togglePin() tea.Cmd {
+	l := &m.current().list
+	selected, ok := l.SelectedItem().(item)
+	if !ok {
+		return nil
+	}
+	if err := m.pins.Toggle(selected.Number); err != nil {
+		return l.NewStatusMessage(errorStyle.Render("pin: " + err.Error()))
+	}
+
+	items := slices.Clone(l.Items())
+	for i, li := range items {
+		it := li.(item)
+		it.pinned = m.pins.Has(it.Number)
+		items[i] = it
+	}
+	slices.SortStableFunc(items, byPinnedThenUpdated)
+	cmd := l.SetItems(items)
+	if l.FilterState() == list.Unfiltered {
+		l.Select(slices.IndexFunc(items, func(li list.Item) bool {
+			return li.(item).Number == selected.Number
+		}))
+	}
+	return cmd
+}
+
+func byPinnedThenUpdated(a, b list.Item) int {
+	x, y := a.(item), b.(item)
+	if x.pinned != y.pinned {
+		if x.pinned {
+			return -1
+		}
+		return 1
+	}
+	return y.UpdatedAt.Compare(x.UpdatedAt)
 }
 
 func (m *Model) bodySize() (listWidth, previewWidth, height int) {
@@ -231,7 +275,7 @@ func (m *Model) renderBody(it item, width int) string {
 }
 
 func (m *Model) footerView() string {
-	help := "j/k move · g/G top/bottom · / search · s switch view · p preview · q quit"
+	help := "j/k move · g/G top/bottom · / search · f pin · s switch view · p preview · q quit"
 	if m.current().list.SettingFilter() {
 		help = "type to search · enter apply · esc cancel"
 	}
